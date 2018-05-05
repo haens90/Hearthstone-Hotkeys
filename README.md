@@ -37,9 +37,18 @@ The script lives in the taskbar and can be quit from there.
 ## Contribute
 If you have any remarks, improvements or have found bugs, please don't hesitate to issue a pull request or [open an issue][4].
 
+## Planed for the future (you are welcome to provide solutions)
+have bot work with different maps. The different colors are a bit of a nuiscance
+detect Taunt successfully
+detect devine shield
+detect red targeting arrow
+select different strategic modes at starting time
+find numbers via OCR or something
 
   [1]: http://us.battle.net/hearthstone/en/
   [2]: https://github.com/chrisma/Hearthstone-Hotkeys/raw/master/Hearthstone_hotkeys.exe
   [3]: http://ahkscript.org/download/
   [4]: https://github.com/chrisma/Hearthstone-Hotkeys/issues/new
   [5]: https://raw.githubusercontent.com/chrisma/Hearthstone-Hotkeys/master/Hearthstone_hotkeys.ahk
+  
+  Disclaimer this sheet is not complete since I'm too busy to add everything I did a while ago.
