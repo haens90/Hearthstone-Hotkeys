@@ -9,58 +9,84 @@ TrayTip, Hearthstone Hotkeys, running...,,1
 
 ; Makes subsequent hotkeys only function if specified window is active
 #IfWinActive Hearthstone ahk_class UnityWndClass 
+#Persistent
 
+;===========================================================================
+
+;Memory: ^Enter = Ctrl + Enter | + = Shift | ! = Alt | < or > = left or right of the kind 
+;Memory: Left top corner x,y is 0,0
+;Memory: Colors have the syntax of 0xffffff
+
+msgbox, 0 , Started, Quit script = Ctrl + AltGr + P `nTestcommand = Ctrl + T or Shift + T or M + C `nExit Autohotkey = Ctrl + AltGr + p `n`nPass Turn/ Start Game = Ctrl + Space or middle mouse button `nMuligan card = Ctrl + Number `nMuligan all cards = Ctrl + D `nAttack with character face = Ctrl + left mouse button `nAttack face with all minions = Ctrl + A  `nAttack face with all minions + hero = Ctrl + W `nBot = Ctrl + B `n`nUnpack Crates = Ctrl + U `nLeave Menu = Backspace `nChoose Deck = Corresponding Number on Numblock `nEmotes = F1 to F6 `nToggle music = Ctrl + M `nQuit Application = Ctrl + Q `nConcede = Ctrl + Esc `nRestart = Shift + Esc `n`nSome manual movements are available. Look inside the script., 20
+
+;===========================================================================
 
 ;; VARIABLES
-; Edit if you wish to adjust to your environment ;TODO doesn't work yet
-#Persistent
-Zone1 := GetAbsolutePixels(0.5, 0.25)
-Zone2 := GetAbsolutePixels(0.5, 0.45)
-Zone3 := GetAbsolutePixels(0.5, 0.65)
-Zone4 := GetAbsolutePixels(0.5, 0.925)
-RETURN
+; Edit if you wish to adjust to your environment 
 
+global Zone0 := GetAbsolutePixels(0.5, 0.1)
+global Zone1 := GetAbsolutePixels(0.5, 0.25)
+global Zone2 := GetAbsolutePixels(0.5, 0.45)
+global Zone3 := GetAbsolutePixels(0.5, 0.65)
+global Zone4 := GetAbsolutePixels(0.5, 0.925)
+global OpponentOdd := false ;TODO use for faster algorithm
+global SelfOdd := false
+global DefaultLatency := 100 ;TODO create inputbox
+global History := [0.165, 0.475]
+global HistoryColor := 0x9F8E7E
+global LeftGround := [0.25, 0.5]
+global LeftGroundColor := 0x000000
+global GroundColorOpponentMinions := [0,0,0,0,0,0,0,0,0]
+global PlayableGreen := 0x6EFF43
+global StandardTolerance := 50
+
+RETURN
+;============================================================================
 
 ;; HOTKEYS
 ; Edit the keys in front of the :: if you wish to modify hotkeys
 
-^!p::ExitApp
+^>!p::ExitApp
 
 ;Testcommand
 ^T::
-Offset := GetAbsolutePixels(0.4800, 0.309)
-PixelGetColor, OutputVar, Offset [1], Offset[2], RGB
-;msgbox %OutputVar%
-Targets := [0]
-PlanTurn(Targets)
-return
-;Testcommand
-T::
-MouseGetPos, MouseX, MouseY
-Offset := GetAbsolutePixels(0.02, 0.07)
-Offset := [MouseX + Offset[1], MouseY + Offset[2]]
-MouseMove, Offset[1], Offset[2]
-return
-;Testcommand
-M::
-Offset := GetAbsolutePixels(0.5200, 0.42)
-MouseMove, Offset[1], Offset[2]
-return
+	Offset := GetAbsolutePixels(0.4800, 0.309)
+	PixelGetColor, OutputVar, Offset [1], Offset[2], RGB
+	;msgbox %OutputVar%
+	Targets := [0]
+	PlanTurn(Targets)
+	return
+
+;Testcommand move to relative point
++T::
+	MouseGetPos, MouseX, MouseY
+	Offset := GetAbsolutePixels(0.02, 0.07)
+	Offset := [MouseX + Offset[1], MouseY + Offset[2]]
+	MouseMove, Offset[1], Offset[2]
+	return
+
+;Testcommand move to point and show its color
+M & C::
+	Offset := GetAbsolutePixels(History[1], History[2])
+	PixelGetColor, OutputVar, Offset [1], Offset[2], RGB
+	msgbox Color %OutputVar%
+	MouseMove, Offset[1], Offset[2]
+	return
 
 ;start a very simple Bot
 ^B::
-Bot()
-return
+	Bot()
+	return
 
-;select Card or Button with left click
+;unpack
 ^U::
-Unpack()
-return
+	Unpack()
+	return
 
 ;Leave menu
 BS:: ; Backspace
-Back()
-return
+	Back()
+	return
 
 ;Choose a Deck via Hotkey
 ^Numpad1:: ChooseDeck(1)
@@ -74,121 +100,130 @@ return
 ^Numpad9:: ChooseDeck(9)
 
 ;select Card or Button with left click
-^Enter:: ; Ctrl + Enter
-^NumpadEnter:: ; Ctrl + Numblock Enter
-Select()
-return
+^Enter:: 
+^NumpadEnter:: 
+	Select()
+	return
 
 ;move down
 ^Down::
-MoveFreely(false, true)
-return
+	MoveFreely(false, true)
+	return
+
 ;move up
 ^Up::
-MoveFreely(false, false)
-return
+	MoveFreely(false, false)
+	return
+
 ;move left
 ^Left::
-MoveFreely(true, true)
-return
+	MoveFreely(true, true)
+	return
+
 ;move right
 ^Right::
-MoveFreely(true, false)
-return
+	MoveFreely(true, false)
+	return
 
 ;iterate zone
 Up::
-IterateZone()
-return
+	IterateZone()
+	return
+
 ;iterate zone
 Down::
-IterateZone(true)
-return
+	IterateZone(true)
+	return
+
 ;iterate Cards to the right
 Right::
-IterateCard()
-return
-;iterate Cards tothe left
+	IterateCard()
+	return
+
+;iterate Cards to the left
 Left::
-IterateCard(true)
-return
+	IterateCard(true)
+	return
 
 ; Mulligan card 1
 ^1:: ; Ctrl + 1 on keyboard
-Mulligan1()
-return
+	Mulligan(1)
+	return
+
 ; Mulligan card 2
 ^2:: ; Ctrl + 2 on keyboard
-Mulligan2()
-return
+	Mulligan(2)
+	return
+
 ; Mulligan card 3
 ^3:: ; Ctrl + 3 on keyboard
-Mulligan3()
-return
+	Mulligan(3)
+	return
+
 ; Mulligan card 4
 ^4:: ; Ctrl + 4 on keyboard
-Mulligan4()
-return
+	Mulligan(4)
+	return
 
 ; Mulligan all cards
 ^D:: ; Ctrl + D
-MulliganAll()
-return
+	MulliganAll()
+	return
 
 ; Pass the turn
 MButton:: ; Middle mouse button
 ^Space:: ; Ctrl + Spacebar
-PassTurn()
-return
+	PassTurn()
+	return
 
 ; Target enemy hero
 ^LButton:: ; Ctrl + Left mouse button
 ^!Enter:: ; Ctrl + Alt + Enter
 ^!NumpadEnter:: ; Ctrl + Alt + Numblock Enter
-TargetEnemyHero()
-return
+	TargetEnemyHero()
+	return
 
 ; Emote "Greetings"
 F1:: ; F1 function key on top of the keyboard
 Numpad1:: ; 1 on Numpad
 NumpadEnd:: ; 1 on Numpad when Numlock is off
-Emote(0.42, 0.80)
-return
+	Emote(0.42, 0.80)
+	return
 
 ; Emote "Well Played"
 F2::
 Numpad2::
 NumpadDown::
-Emote(0.42, 0.72)
-return
+	Emote(0.42, 0.72)
+	return
 
 ; Emote "Thanks"
 F3::
 Numpad3::
 NumpadPgDn::
-Emote(0.42, 0.64)
-return
+	Emote(0.42, 0.64)
+	return
 
 ; Emote "Sorry"
 F4::
 Numpad4::
 NumpadLeft::
-Emote(0.58, 0.64)
-return
+	Emote(0.58, 0.64)
+	return
 
 ; Emote "Oops"
 F5::
 Numpad5::
 NumpadClear::
-Emote(0.58, 0.72)
-return
+	Emote(0.58, 0.72)
+	return
 
 ; Emote "Threaten"
 F6::
 Numpad6::
 NumpadRight::
-Emote(0.58, 0.80)
-return
+	Emote(0.58, 0.80)
+	return
 
 ; Toggle borderless fullscreen window mode
 ;~ F12::
@@ -197,44 +232,45 @@ return
 
 ; Concede the match
 ^Esc:: ; Ctrl + Escape
-Concede()
-return
+	Concede()
+	return
 
 ; Restart the match 
-+Esc:: ; Ctrl + Shift + Escape
-Restart()
-return
++Esc:: ; Shift + Escape
+	Restart()
+	return
 
 ; Quit application
 ^Q:: ; Ctrl + Q
-Quit()
-return
+	Quit()
+	return
 
 ; Toggle "Sound in Background" option
 ^m:: ; Ctrl + m
-ToggleBackgroundSound()
-return
+	ToggleBackgroundSound()
+	return
 
 ; Attack the opponent's face with all minions able to do so.
 ^a:: ; Ctrl + a
-AttackFaceWithAllMinions()
-return
+	AttackFaceWithAllMinions()
+	return
 
 ; Attack the opponent's face with all minions able to do so.
 ; Afterwards, end the turn.
 ^w:: ; Ctrl + w
 Xbutton2:: ; Special mouse button "navigation-forward" 
-AttackFaceWithAllMinions(true)
-return
+	AttackFaceWithAllMinions(true)
+	return
 
-
+;===========================================================================
 
 ;; FUNCTIONS
 
 ; Convert relative positions on screen into absolute 
 ; pixels for AHK commands. Allows for different resolutions.
 GetAbsolutePixels(RatioX, RatioY) {
-	WinGetPos,,, Width, Height
+MouseGetPos, Xm, Ym, Win
+	WinGetPos,,, Width, Height, ahk_id %Win%
 	AbsoluteX := Round(Width * RatioX)
 	AbsoluteY := Round(Height * RatioY)
 	return [AbsoluteX, AbsoluteY]
@@ -247,6 +283,111 @@ GetRelPosition(AbsoluteX, AbsoluteY) {
 	RatioX := AbsoluteX / Width
 	RatioY := AbsoluteY / Height
 	return [RatioX , RatioY]
+}
+
+ForwRelPos(RatioX, RatioY) {
+	return [RatioX , RatioY]
+}
+
+MoveToColorInBox(Scanbox, Color, Tolerance = 50, offsetX = 0, offsetY = 0) {
+	Pixel := [0,0]
+	if (FindColorInBox(Scanbox, Pixel, Color, Tolerance)) {
+		MouseMove, Pixel[1] + offsetX, Pixel[2] + offsetY
+		return 1
+	}
+	else
+		return 0
+}
+
+;recieves Area as array with relative borders of the area to search in and returns found absolute pixel in Pixel
+FindColorInBox(Scanbox, Pixel, Color, Tolerance = 50) {
+	TopLeft := GetAbsolutePixels(Scanbox[1], Scanbox[2])
+	BottomRight := GetAbsolutePixels(Scanbox[3], Scanbox[4])
+
+	if (TopLeft[2] == BottomRight[2]) {
+		BottomRight[2] := BottomRight[2] + 1
+	}
+	if (TopLeft[1] == BottomRight[1]) {
+		BottomRight[2] := BottomRight[2] + 1
+	}
+
+	PixelSearch, FoundColorX, FoundColorY, TopLeft[1], TopLeft[2], BottomRight[1], BottomRight[2], Color, Tolerance, Fast RGB
+
+var := Scanbox[1]
+vars := Scanbox[2]
+var1 := Scanbox[3]
+vars2 := Scanbox[4]
+vart := TopLeft [1]
+varst := BottomRight[1]
+;msgbox Color %Color% Ort %FoundColorX% : %FoundColorY% . %var%, %vars%, %var1%, %vars2%, leftright %vart%, %varst%, TOlerance %Tolerance%
+
+	if (FoundColorX) {
+		Pixel[1] := FoundColorX
+		Pixel[2] := FoundColorY		
+		return 1
+	}
+	else { 
+		Pixel.remove(2)
+		Pixel.remove(1)
+		return 0
+	}
+}
+
+; recieves relative position to search at in Center and returns found pixel in Center as absolute pixel
+FindColorAtPoint(Center, ScanDistance, Color, Tolerance = 50) {
+	Pixel := GetAbsolutePixels(Center[1], Center[2])
+	PixelSearch, FoundColorX, FoundColorY, Pixel[1] - ScanDistance, Pixel[2] - ScanDistance, Pixel[1] + ScanDistance, Pixel[2] - ScanDistance, Color, Tolerance, Fast RGB
+
+var := Center[1]
+var2 := Center[2]
+;msgbox Color %Color% with Tolerance: %Tolerance% at %FoundColorX% : %FoundColorY% . Center: %var% : %var2% including "radius" %ScanDistance%
+	if (FoundColorX) {
+		Center[1] := FoundColorX
+		Center[2] := FoundColorY
+;MouseMove, Center[1], Center[2]
+;Sleep, 5000
+		return 1
+	}
+	else { ;msgbox nothing found at pixel
+		Pixel.remove(2)
+		Pixel.remove(1)
+		return 0
+	}
+}
+
+; recieves relative Position relative to mouse curser to search at in Center and returns found absolute pixel in parameter Pixel returns 1 for success ;TODO write method that does the same for a recieved Position instead of MousePos
+FindColorAtRelOffset(Offset, ScanDistance, Color, Tolerance = 50, Pixel = 0) {
+	MouseGetPos, MouseX, MouseY
+	Mouse := GetRelPosition(MouseX, MouseY)
+	Offset := [Mouse[1] + Offset[1], Mouse[2] + Offset[2]]
+var := Offset[1]
+vars := Offset[2]
+;msgbox Color %Color% Ort %var%, %vars%
+	if (FindColorAtPoint(Offset, ScanDistance, Color, Tolerance)) {
+		Pixel[1] := Offset[1]
+		Pixel[2] := Offset[2]
+		return 1
+	}
+}
+
+ClickAndRestoreRel(x, y, speed = 0){
+	ToClick := GetAbsolutePixels(x, y)
+	ClickAndRestorePos(ToClick[1], ToClick[2], speed)
+}
+
+ClickAndRestorePos(x, y, speed = 0) {
+	global DefaultLatency
+	MouseGetPos, MouseX, MouseY
+	MouseMove, x, y
+	Sleep, 30
+	MouseClick, left, x, y, ,speed
+	if speed
+		Sleep, DefaultLatency + 900
+	Sleep, 30
+	; Seems to work better if we click thrice
+;	MouseClick, left, x, y
+;	MouseClick, left, x, y
+	MouseMove, %MouseX%, %MouseY%
 }
 
 ; Open (and wait for) the game menu
@@ -278,7 +419,12 @@ PassTurn() {
 	EndTurnButton := [0.75, 0.46, 0.95, 0.46]
 	MouseGetPos, MouseX, MouseY
 
-	;Green button;MoveToColorInBox(Scanbox, Color, Tolerance = 50, offsetX = 0, offsetY = 0) 
+	if (CheckForMulligan()) {
+		MulliganConfirm()
+		return
+	}
+
+	;Green button ;MoveToColorInBox(Scanbox, Color, Tolerance = 50, offsetX = 0, offsetY = 0) 
 	if (MoveToColorInBox(EndTurnButton, 0x00FF00, 50, 50)) {
 		Click
 		Click
@@ -309,25 +455,6 @@ PassTurn() {
 	return
 }
 
-ClickAndRestoreRel(x, y, speed = 0){
-	ToClick := GetAbsolutePixels(x, y)
-	ClickAndRestorePos(ToClick[1], ToClick[2], speed)
-}
-
-ClickAndRestorePos(x, y, speed = 0) {
-	MouseGetPos, MouseX, MouseY
-	MouseMove, x, y
-	Sleep, 30
-	MouseClick, left, x, y, ,speed
-	if speed
-		Sleep, 1000
-	Sleep, 30
-	; Seems to work better if we click thrice
-;	MouseClick, left, x, y
-;	MouseClick, left, x, y
-	MouseMove, %MouseX%, %MouseY%
-}
-
 ; Bring up the menu and click the "Concede" button
 Concede() {
 	BlockInput, On
@@ -341,7 +468,7 @@ Concede() {
 Restart() {
 	BlockInput, On
 	OpenMenu()
-	Button := GetAbsolutePixels(0.5, 0.50)
+	Button := GetAbsolutePixels(0.5, 0.45)
 	MouseClick, left, Button[1], Button[2]
 	BlockInput, Off
 }
@@ -389,7 +516,7 @@ ToggleBackgroundSound() {
 	BlockInput, Off
 }
 
-;Character determined by MousePos returns true if attacked
+;Character determined by MousePos returns true if minion removed
 AttackCharacterWithAll() {
 	BlockInput, On
 	MinionRow := [0.2, 0.55, 0.9, 0.55]
@@ -400,8 +527,8 @@ AttackCharacterWithAll() {
 
 ;msgbox Minions should be attacked
 	;attack with Minions
-	while (FindColorInBox(MinionRow, Pixel, 0x6EFF43, 50)) { 
-		ClickAndRestorePos(Pixel[1] + 10, Pixel[2])
+	while (FindColorInBox(MinionRow, Pixel, 0x6EFF43, 100)) { 
+		ClickAndRestorePos(Pixel[1] + 50, Pixel[2])
 		Sleep, 100
 		Click
 		Sleep, 100
@@ -417,8 +544,8 @@ AttackCharacterWithAll() {
 	}
 
 	;attack with Hero
-	while (FindColorInBox(HeroRow, Pixel, 0x6EFF43, 50)) { 
-		ClickAndRestorePos(Pixel[1] + 10, Pixel[2])
+	while (FindColorInBox(HeroRow, Pixel, 0x6EFF43, 100)) { 
+		ClickAndRestorePos(Pixel[1] + 100, Pixel[2])
 		Sleep, 100
 		Click
 		Sleep, 100
@@ -469,7 +596,7 @@ AttackAllMinions(Targets) {
 	}
 	
 	Loop, 13 {
-		if(!(Targets[A_Index] == 0)) {
+		if(!(Targets[A_Index] == 0)) { ;for each
 			MoveToZone(1, true)
 			MoveToCard(A_Index)
 			if(AttackCharacterWithAll()) {
@@ -493,20 +620,20 @@ AttackFaceWithAllMinions(EndTurnAfterwards=false, Hero= false) {
 	Rest()
 	
 	;attack with Minions
-	while (MoveToColorInBox(MinionRow, 0x6EFF43, 50, 10)) {
-	MouseGetPos, Moused, Mousec
+	while (MoveToColorInBox(MinionRow, PlayableGreen, StandardTolerance, 10)) {
+	;MouseGetPos, Moused, Mousec
 ;msgbox attack %Moused%, %Mousec%
 		TargetEnemyHero(false)
 		Sleep, 1000 ; TODO check necessity
 		Rest()
 		attacked := 1
 	}
-
+	
 	;attack with Hero
 	Rest()
 	Sleep, 100
 
-	while (MoveToColorInBox(HeroRow, 0x6EFF43, 20, 10) and Hero) {
+	while (MoveToColorInBox(HeroRow, PlayableGreen, StandardTolerance, 10) and Hero) {
 		TargetEnemyHero(false)
 		attacked := 1
 		Sleep, 1900
@@ -579,50 +706,57 @@ Rest() {
 	MouseMove, RestingPos[1], RestingPos[2]
 }
 
-Mulligan1() {
-	BlockInput, On
-	Button := GetAbsolutePixels(0.3, 0.45)
-	MouseClick, left, Button[1], Button[2]
-	BlockInput, Off
-}
+Mulligan(CardNumber) {
+	if (!CheckForMulligan()) 
+		return
 
-Mulligan2() {
 	BlockInput, On
-	Button := GetAbsolutePixels(0.45, 0.45)
-	MouseClick, left, Button[1], Button[2]
-	BlockInput, Off
-}
-
-Mulligan3() {
-	BlockInput, On
-	Button := GetAbsolutePixels(0.625, 0.45)
-	MouseClick, left, Button[1], Button[2]
-	BlockInput, Off
-}
-
-Mulligan4() {
-	BlockInput, On
-	Button := GetAbsolutePixels(0.75, 0.45)
+	Switch CardNumber {
+		Case 1: Button := GetAbsolutePixels(0.3, 0.45)
+		Case 2: Button := GetAbsolutePixels(0.45, 0.45)
+		Case 3: Button := GetAbsolutePixels(0.625, 0.45)
+		Case 4: Button := GetAbsolutePixels(0.75, 0.45)
+		Default: msgbox This shouldn't happen
+	}
 	MouseClick, left, Button[1], Button[2]
 	BlockInput, Off
 }
 
 MulliganAll() {
-	BlockInput, On 
-	Mulligan1()
+	global DefaultLatency 
+	if (CheckForMulligan()) {
+		BlockInput, On 
+		Mulligan(1)
+			Sleep, DefaultLatency 
+		Mulligan(2)
+			Sleep, DefaultLatency 
+		Mulligan(3)
+			Sleep, DefaultLatency 
+		Mulligan(4)
 		Sleep, 100
-	Mulligan2()
-		Sleep, 100
-	Mulligan3()
-		Sleep, 100
-	Mulligan4()
-	Sleep, 100
-	Button := GetAbsolutePixels(0.5, 0.75)
-	MouseClick, left, Button[1], Button[2]
-	BlockInput, Off
+		MulliganConfirm()
+		BlockInput, Off
+	}
 }
 
-IterateCard(negate=false) {
+;returns true when mulliganselection active
+CheckForMulligan() {	
+	ChooseButton := [0.5, 0.755]
+	ButtonCorner := [0.465, 0.775]
+	Color := 0xabdfff
+
+	if (WinActive(Hearthstone) and FindColorAtPoint(ChooseButton, 1, Color, 28) and FindColorAtPoint(ButtonCorner, 1, Color, 35)) {
+		return true
+	}
+	return false
+}
+
+MulliganConfirm() {
+	Button := GetAbsolutePixels(0.5, 0.75)
+	MouseClick, left, Button[1], Button[2]
+}
+
+IterateCard(negate = false) {
 	BlockInput, On
 	MouseGetPos, MouseX, MouseY
 	Zone := GetZone()
@@ -693,26 +827,25 @@ MoveToCard(Position, force=false) {
 IterateZone(negate=false) {
 	BlockInput, On
 	MouseGetPos, MouseX, MouseY
-
-	Zone0 := GetAbsolutePixels(0.5, 0.1)
-	Zone1 := GetAbsolutePixels(0.5, 0.25)
-	Zone2 := GetAbsolutePixels(0.5, 0.45)
-	Zone3 := GetAbsolutePixels(0.5, 0.65)
-	Zone4 := GetAbsolutePixels(0.47, 0.925)
 	LowerMargin := GetAbsolutePixels(0.18, 0.0)
 	UpperMargin := GetAbsolutePixels(0.82, 0.0)
 	MinimumIncrement := 30
 	X := Zone0[1]
+	minusFlag := 0
 	
 	Zone := GetZone() ; TODO use Zone in every if clause
 
 	;movement between the zones
 	if(negate){ ;down
+		if (MouseY < (Zone0[2] )) { ;opponent cards
+			MouseY := (Zone0[2] + Zone1[2]) / 2
+			minusFlag := 1
+		}
 		if (Zone == 3 or Zone == 4) {
 			X := Zone4[1]
 			MouseY := Zone4[2]
 		} 
-		if (Zone == 2) { ; in Zone two also visit history
+		if (Zone == 2) { ; in Zone two also visit deck and history ;TODO switch between decks
 			if (MouseX <= LowerMargin[1]) { ;history
 				MouseY := MouseY + MinimumIncrement
 				if (MouseY > Zone3[2]) { ;make fluent switch between zones
@@ -725,7 +858,7 @@ IterateZone(negate=false) {
 				MouseY := (Zone3[2] + Zone4[2]) / 2
 			}
 		} 
-		if (Zone == 1) { ; in Zone one also visit deck and history
+		if (Zone == 1) { ; in Zone one also visit deck and history ;TODO switch between decks
 			if (MouseX >= UpperMargin[1]) { ;deck 
 				X := UpperMargin[1]
 			}
@@ -737,19 +870,15 @@ IterateZone(negate=false) {
 				MouseY := (Zone2[2] + Zone3[2]) / 2
 			}
 		} 
-		if (Zone == 0) {
+		if (Zone == 0 and !minusFlag) {
 			MouseY := (Zone1[2] + Zone2[2]) / 2
 		}
-		if (MouseY < Zone0[2]) { ;opponent cards
-			MouseY := (Zone0[2] + Zone1[2]) / 2
-		}
 	}
-	else {
-		if (Zone == 0) {
-			MouseMove, Zone0[1], Zone0[2] / 2, 5
-			return
+	else { ;up
+		if (Zone == 0) { 
+			MouseY := Zone0[2] / 2, 5 ;towards Zone -1
 		}
-		if (Zone == 1) { ; in Zone one also visit history
+		if (Zone == 1) { ;in Zone one also visit deck and history ;TODO switch between decks
 			if (MouseX <= LowerMargin[1]) { ;history
 				MouseY := MouseY - MinimumIncrement
 				if (MouseY < Zone1[2]) { ;make fluent switch between zones
@@ -763,7 +892,7 @@ IterateZone(negate=false) {
 				MouseY := (Zone0[2] + Zone1[2]) / 2
 			}
 		}
-		if (Zone == 2) { ; in Zone two also visit deck and history
+		if (Zone == 2) { ; in Zone two also visit deck and history ;TODO switch between decks
 			if (MouseX >= UpperMargin[1]) { ;deck
 				X := UpperMargin[1]
 			}
@@ -783,17 +912,12 @@ IterateZone(negate=false) {
 		}
 	}
 	MouseMove, X , MouseY, 5
+	sleep, 50
 	BlockInput, Off
 }
 
 GetZone() {
 	MouseGetPos, MouseX, MouseY
-
-	Zone1 := GetAbsolutePixels(0.5, 0.25)
-	Zone2 := GetAbsolutePixels(0.5, 0.45)
-	Zone3 := GetAbsolutePixels(0.5, 0.65)
-	Zone4 := GetAbsolutePixels(0.47, 0.925)
-
 	if (MouseY >= Zone4[2]) {
 		return 4
 	}
@@ -811,7 +935,7 @@ GetZone() {
 
 MoveToZone(TargetZone, force = false) {
 	CurrentZone := GetZone()
-	if(CurrentZone == TargetZone and force) {
+	if(CurrentZone == TargetZone and force) { ; puts mouse into middle
 		IterateZone()
 		IterateZone(true)
 	}
@@ -821,13 +945,11 @@ MoveToZone(TargetZone, force = false) {
 	else if (CurrentZone > TargetZone) {
 		IterateZone()
 		MoveToZone(TargetZone)
-		sleep, 50
 		return
 	}
 	else if (CurrentZone < TargetZone) {
 		IterateZone(true)
 		MoveToZone(TargetZone)
-		sleep, 50
 		return
 	}
 }
@@ -931,34 +1053,10 @@ Unpack(duration = 1000) {
 	}
 }
 
-StartGame() {
-	; Choose A Deck if in Selectionmenu
-	; Blue button
-	ChooseButton := [0.73, 0.803]
-	Jaina := 0.12
-	Thrall := 0.3
-	if (FindColorAtPoint(ChooseButton, 15, 0x2f67ff, 20)) {
-		ChooseDeck(1)
-		Sleep, 250
-		ClickAndRestoreRel(0.75, Thrall) ; Case of Training ;adjust for certain opponent
-		Sleep, 10
-		Click
-		Sleep, 30000
-	}
 
-		Sleep, 250
-	;mulligan cards if window and selection active
-	ChooseButton := [0.5, 0.8]
+;===========================================================================
 
-	;MouseMove, ChooseButton[1], ChooseButton[2]
-	if (WinActive(Hearthstone) and FindColorAtPoint(ChooseButton, 5, 7fc4ff, 20)) { ; 
-		MulliganAll()
-		Sleep, 10000
-		Emote(0.42, 0.80)
-	}
-}
-
-Bot() {
+Bot() { 
 	BlockInput, On
 	
 	StartGame() 
@@ -978,160 +1076,58 @@ Bot() {
 		if (FoundYellowNaxx[1] or FoundYellow[1] or FoundGreen[1]) 
 		{
 			Targets := [0]
+			msgbox initial turn planning
 			PlanTurn(Targets)
 			DoTurn(Targets)
 			PassTurn()
 			Sleep, 2500 ; Do not start next turn early! Please! :D
 		}
-		StartGame() ;only triggers in menu(hopefully) 
+		else {
+			StartGame() ;only triggers in menu (hopefully) 
+			if(LeftGroundColor != 0x000000 and !FindColorAtPoint(LeftGround, 15, LeftGroundColor, 20) and !CheckForMulligan()) {
+				ClickAndRestorePos(LeftGround[1], LeftGround[2], 50) ;skip Card
+			}
+		}
 	}
 	BlockInput, Off
 }
 
-DoTurn(Targets) { 
-	PlayAllCards(Targets)
-;	Sleep, 2000 ;some minions do have nasty effects that cover the board when summoned
-	PlanTurn(Targets)
+StartGame() {
+	ChooseButton := [0.73, 0.803]	; Blue button
+	Jaina := 0.12
+	Thrall := 0.3 ;has Taunt ;has Frog
 
-	Rest()
-	AttackAllMinions(Targets)
-	PlayAllCards(Targets)
-;	Sleep, 2000
+	; Choose A Deck if in Selectionmenu
+	if (FindColorAtPoint(ChooseButton, 15, 0x2f67ff, 20)) {
+		ChooseDeck(1)
+		Sleep, 250
+		ClickAndRestoreRel(0.75, Thrall) ; Case of Training ;adjust for certain opponent
+		Sleep, 10
+		Click
+		Sleep, 30000
+	}
 
-	Rest()
-	AttackFaceWithAllMinions(,true)
-	PlayAllCards()
-;	Sleep, 2000
+	Sleep, 250
+	;mulligan cards if window and selection active
+	ChooseButton := [0.5, 0.8]
+
+	;MouseMove, ChooseButton[1], ChooseButton[2]
+	if (CheckForMulligan()) { ; 
+		MulliganAll()
+		Sleep, 10000 ;TODO detect gamestart
+		Emote(0.42, 0.80)
+	}
+
+	InitColors()
 }
 
-PlayAllCards(Targets := 0) {
-	Hand := [0.3, 0.98, 0.7, 1]
-	FoundYellow := [0,0]
-	FoundGreen := [0,0]
-
-;Gand := GetAbsolutePixels(Hand[1], Hand[2])
-;MouseMove, Gand[1], Gand[2]
-;Sleep, 10000
-	
-	if (Zone == 4) {
-		IterateZone() ;definetely leave hand
-		Sleep, 200 ; card takes time to shrink
-	}
-
-	;Play Cards
-	while (FindColorInBox(Hand, FoundGreen, 0x50ff34, 30) or FindColorInBox(Hand, FoundYellow, 0x50FF00, 20)) ;TODO 0xFFFF00 finds golden and corehound
-	{
-		if (FoundYellow[1] > 0) {
-			MouseMove, FoundYellow[1] + 5, FoundYellow[2]
-		}
-		else {
-			MouseMove, FoundGreen[1] + 5, FoundGreen[2]
-		}
-		Sleep, 100
-		if(Targets != 0) {
-			flag := 0
-			Loop, 13 {
-				if (Targets[A_Index] > 0) { 
-					TargetEnemyMinion(A_Index)
-					flag :=  1
-					break
-				}
-			}
-			if(!flag) {
-				TargetEnemyHero()
-			}
-		}
-		else { 
-			TargetEnemyHero()
-		}
-
-		Zone := GetZone()
-		if (Zone == 4)
-		{
-			IterateZone() ;definetely leave hand
-			Sleep, 200 ; card takes time to shrink
-		}
-	}
-}
-
-MoveToColorInBox(Scanbox, Color, Tolerance = 50, offsetX = 0, offsetY = 0) {
-	Pixel := [0,0]
-	if (FindColorInBox(Scanbox, Pixel, Color, Tolerance)) {
-		MouseMove, Pixel[1] + offsetX, Pixel[2] + offsetY
-		return 1
-	}
-	else
-		return 0
-}
-
-;recieves Area as array with relative borders of the area to search in and returns found absolute pixel in Pixel
-FindColorInBox(Scanbox, Pixel, Color, Tolerance = 50) {
-	TopLeft := GetAbsolutePixels(Scanbox[1], Scanbox[2])
-	BottomRight := GetAbsolutePixels(Scanbox[3], Scanbox[4])
-
-	if (TopLeft[2] == BottomRight[2]) {
-		BottomRight[2] := BottomRight[2] + 1
-	}
-	if (TopLeft[1] == BottomRight[1]) {
-		BottomRight[2] := BottomRight[2] + 1
-	}
-
-	PixelSearch, FoundColorX, FoundColorY, TopLeft[1], TopLeft[2], BottomRight[1], BottomRight[2], Color, Tolerance, Fast RGB
-
-var := Scanbox[1]
-vars := Scanbox[2]
-var1 := Scanbox[3]
-vars2 := Scanbox[4]
-vart := TopLeft [1]
-varst := BottomRight[1]
-;msgbox Color %Color% Ort %FoundColorX% : %FoundColorY% . %var%, %vars%, %var1%, %vars2%, leftright %vart%, %varst%
-
-	if (FoundColorX) {
-		Pixel[1] := FoundColorX
-		Pixel[2] := FoundColorY		
-		return 1
-	}
-	else { 
-		Pixel.remove(2)
-		Pixel.remove(1)
-		return 0
-	}
-}
-
-; recieves relative position to search at in Center and returns found pixel in Center as absolute pixel
-FindColorAtPoint(Center, ScanDistance, Color, Tolerance = 50) {
-	Pixel := GetAbsolutePixels(Center[1], Center[2])
-
-	PixelSearch, FoundColorX, FoundColorY, Pixel[1] - ScanDistance, Pixel[2] - ScanDistance, Pixel[1] + ScanDistance, Pixel[2] - ScanDistance, Color, Tolerance, Fast RGB
-
-var := Center[1]
-vars := Center[2]
-;msgbox Color %Color% with Tolerance: %Tolerance% at %FoundColorX% : %FoundColorY% . Center: %var% : %vars% including "radius" %ScanDistance%
-	if (FoundColorX) {
-		Center[1] := FoundColorX
-		Center[2] := FoundColorY
-;MouseMove, Center[1], Center[2]
-		return 1
-	}
-	else { ;msgbox nothing found at pixel
-		Pixel.remove(2)
-		Pixel.remove(1)
-		return 0
-	}
-}
-
-; recieves relative Position relative to mouse curser to search at in Center and returns found absolute pixel in Pixel ;TODO write method that does the same for a recieved Position instead of MousePos
-FindColorAtRelOffset(Offset, ScanDistance, Color, Tolerance = 50, Pixel = 0) {
-	MouseGetPos, MouseX, MouseY
-	Mouse := GetRelPosition(MouseX, MouseY)
-	Offset := [Mouse[1] + Offset[1], Mouse[2] + Offset[2]]
-var := Offset[1]
-vars := Offset[2]
-;msgbox Color %Color% Ort %var%, %vars%
-	if (FindColorAtPoint(Offset, ScanDistance, Color, Tolerance)) {
-		Pixel[1] := Offset[1]
-		Pixel[2] := Offset[2]
-		return 1
+InitColors() {
+		;TODO auch für diener (-> Colorarray) + ausschluss fehlverhalten bzgl dienerpositionen mitten im Spiel 
+	if (!CheckForMulligan() FindColorAtPoint(History, 5, HistoryColor)) {
+		;msgbox init
+		Abs := GetAbsolutePixels(LeftGround[1], LeftGround[2])
+		PixelGetColor, OutputVar, Abs[1], Abs[2], RGB
+		LeftGroundColor := OutputVar
 	}
 }
 
@@ -1140,8 +1136,10 @@ PlanTurn(Targets) {
 	HeroRow := [0.5, 0.7, 0.65, 0.7]
 	Hand := [0.3, 0.98, 0.7, 1]
 	if(FindColorInBox(MinionRow, FoundGreen, 0x00FF00, 50) or FindColorInBox(HeroRow, FoundGreen, 0x00FF00, 50) or FindColorInBox(Hand, FoundGreen, 0x00FF00, 50)) {
+		OpponentOdd()
 		FindOpponentMinions(Targets)
 		DetectTaunt(Targets)
+;Debug
 	T1 := Targets[1]
 	T2 := Targets[2]
 	T3 := Targets[3]
@@ -1155,8 +1153,14 @@ PlanTurn(Targets) {
 	T11 := Targets[11]
 	T12 := Targets[12]
 	T13 := Targets[13]
-;msgbox print %T1%, %T2%, %T3%, %T4%, %T5%, %T6%, %T7%, %T8%, %T9%, %T10%, %T11%, %T12%, %T13% 
+		;msgbox print %T1%, %T2%, %T3%, %T4%, %T5%, %T6%, %T7%, %T8%, %T9%, %T10%, %T11%, %T12%, %T13% 
 	}
+}
+
+OpponentOdd() {
+	global OpponentOdd
+	;See if middle position is free ; Probe aus 8; c5a86f c2a66f c0a46f bca16f b69d6c b49c6b b39c6b aa956b ;b89e6d baa16d baa06d b99f6e , b89e6e baa06d ;Finaler Mix: b99f6e
+	;if(free) { OpponentOdd := false} else { OpponentOdd := false}
 }
 
 ; possible positioning in 13 positions: oe0eoeOeoe0eo - "e" for even count "o" for odd count ;TODO golden
@@ -1229,7 +1233,7 @@ vars := Pixel[2]
 	IterateCard()
 	IterateCard()
 	
-;TODO nonminion cards could be a problem since the loop ends
+;TODO nonminion (unattackable?) cards could be a problem since the loop ends
 	while(FindColorAtRelOffset(Offset, Distance, Gray, Tolerance, Pixel)) {
 		Targets[A_Index * 2 + Unoccupied - 1] := 1
 		Filled := A_Index
@@ -1282,4 +1286,78 @@ MY := LeftEnd[2] + MY
 		}
 	}
 	BlockInput, Off
+}
+
+DoTurn(Targets) { 
+	;TODO if targets >0 do follwing if statement and attack
+	if (PlayAllCards(Targets)) {
+		PlanTurn(Targets)
+	}
+
+	Rest()
+			MsgBox attack all minions
+	AttackAllMinions(Targets)
+	PlayAllCards(Targets)
+;	Sleep, 2000
+
+	Rest()
+	
+			MsgBox attack face with hero and all
+	AttackFaceWithAllMinions(,true)
+	PlayAllCards()
+;	Sleep, 2000
+}
+
+PlayAllCards(Targets := 0) {
+	Hand := [0.3, 0.98, 0.7, 1]
+	FoundYellow := [0,0]
+	FoundGreen := [0,0]
+	minionTouched := 0
+
+;Gand := GetAbsolutePixels(Hand[1], Hand[2])
+;MouseMove, Gand[1], Gand[2]
+;Sleep, 10000
+	
+	if (Zone == 4) {
+		IterateZone() ;definetely leave hand
+		Sleep, 200 ; card takes time to shrink
+	}
+
+	;Play Cards
+	while (FindColorInBox(Hand, FoundGreen, 0x50ff34, 30) or FindColorInBox(Hand, FoundYellow, 0x50FF00, 20)) ;TODO 0xFFFF00 finds golden and corehound
+	{
+		if (FoundYellow[1] > 0) {
+			MouseMove, FoundYellow[1] + 5, FoundYellow[2]
+		}
+		else {
+			MouseMove, FoundGreen[1] + 5, FoundGreen[2]
+		}
+		Sleep, 100
+		if(Targets != 0) {
+			flag := 0
+			Loop, 13 {
+				if (Targets[A_Index] > 0) { 
+					TargetEnemyMinion(A_Index)
+;	Sleep, 2000 ;some minions do have nasty effects that cover and tilt the board when summoned
+					flag :=  1
+					break
+				}
+			}
+			if(!flag) {
+				TargetEnemyHero()
+			}
+			minionTouched := 1
+		}
+		else { 
+			TargetEnemyHero()
+		}
+
+		Zone := GetZone()
+		if (Zone == 4)
+		{
+			IterateZone() ;definetely leave hand
+			Sleep, 200 ; card takes time to shrink
+		}
+	}
+	return minionTouched
 }
